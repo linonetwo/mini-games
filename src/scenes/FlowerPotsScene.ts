@@ -23,15 +23,26 @@ import { ScoreService }  from '../systems/ScoreService.js';
 import { SaveService }   from '../systems/SaveService.js';
 import { GameOverOverlay } from '../ui/GameOverOverlay.js';
 
-const GRID_COLS  = 6;
-const GRID_ROWS  = 4;
+const MAX_BUBBLES = 12;
 const POT_SLOTS  = 4;
 const POT_CAP    = 4;   // flowers per pot
 const QUEUE_SIZE = 20;  // pre-generated pot queue
 
-interface CellData {
-  type: FlowerType; row: number; col: number;
-  container: Phaser.GameObjects.Container | null;
+interface BubbleFlowerData {
+  type: FlowerType;
+  container: Phaser.GameObjects.Container;
+  bubble: BubbleData;
+  active: boolean;
+  localX: number;
+  localY: number;
+}
+
+interface BubbleData {
+  id: string;
+  container: Phaser.GameObjects.Container;
+  flowers: BubbleFlowerData[];
+  bg: Phaser.GameObjects.Graphics;
+  radius: number;
 }
 
 interface PotData {
@@ -48,11 +59,12 @@ export class FlowerPotsScene extends Phaser.Scene {
   private _potAreaH  = 0;
   private _potY      = 0;
   private _gridTop   = 0;
-  private _cellW     = 0; private _cellH = 0;
-  private _gridLeft  = 0; private _gridTop2 = 0;
+  
+  
 
   // ── state ────────────────────────────────────────────────────────────────
-  private _cells: CellData[][] = [];
+  private _bubbles: BubbleData[] = [];
+  private _bubbleSpawnTimer: Phaser.Time.TimerEvent | null = null;
   private _pots: PotData[]     = [];
   private _lockedSlots: Set<number> = new Set([2, 3]);
   private _queue: Array<{ type: FlowerType; capacity: number }> = [];
@@ -104,12 +116,6 @@ export class FlowerPotsScene extends Phaser.Scene {
     this._potAreaH = Math.max(110, this._H * 0.22);
     this._potY     = this._hudH + this._potAreaH / 2;
     this._gridTop  = this._hudH + this._potAreaH + 8;
-
-    const gridH   = this._H - this._gridTop - 4;
-    this._cellW   = Math.floor((this._W - 16) / GRID_COLS);
-    this._cellH   = Math.floor(gridH / GRID_ROWS);
-    this._gridLeft = (this._W - this._cellW * GRID_COLS) / 2;
-    this._gridTop2 = this._gridTop;
   }
 
   private _onResize(): void {
@@ -172,7 +178,7 @@ export class FlowerPotsScene extends Phaser.Scene {
     }).setOrigin(0.5).setAlpha(0).setDepth(20);
 
     this._buildPots();
-    this._buildGrid();
+    this._setupBubbles();
   }
 
   // ── queue & pots ──────────────────────────────────────────────────────────
@@ -341,114 +347,181 @@ export class FlowerPotsScene extends Phaser.Scene {
 
   // ── grid ──────────────────────────────────────────────────────────────────
 
-  private _buildGrid(): void {
-    this._gridLayer.removeAll(true);
-    this._cells = [];
+  
+    // ── bubbles ─────────────────────────────────────────────────────────────
 
-    const types = this._weighedFlowerTypes();
+    private _setupBubbles(): void {
+      this._gridLayer.removeAll(true);
+      this._bubbles = [];
+      this.matter.world.setBounds(0, this._gridTop, this._W, this._H - this._gridTop, 50, true, true, false, true);
 
-    for (let r = 0; r < GRID_ROWS; r++) {
-      this._cells[r] = [];
-      for (let c = 0; c < GRID_COLS; c++) {
-        const type = types[(r * GRID_COLS + c) % types.length] as FlowerType;
-        const cell: CellData = { type, row: r, col: c, container: null };
-        cell.container = this._makeCellContainer(cell);
-        this._gridLayer.add(cell.container);
-        this._cells[r][c] = cell;
+      if (this._bubbleSpawnTimer) {
+        this._bubbleSpawnTimer.remove();
+      }
+      this._bubbleSpawnTimer = this.time.addEvent({
+        delay: 2000,
+        callback: this._checkSpawnBubble,
+        callbackScope: this,
+        loop: true,
+      });
+
+      for (let i = 0; i < 6; i++) {
+        this.time.delayedCall(i * 300, () => this._spawnBubble());
       }
     }
-  }
 
-  /** Generate a type list that guarantees each active pot type has multiple flowers */
-  private _weighedFlowerTypes(): FlowerType[] {
-    const result: FlowerType[] = [];
-    const potTypes = this._pots.map(p => p.type);
-    // Add each pot type extra times
-    potTypes.forEach(t => { for (let i = 0; i < 5; i++) result.push(t); });
-    // Fill with random types
-    while (result.length < GRID_COLS * GRID_ROWS) {
-      result.push(ALL_FLOWER_TYPES[Math.floor(Math.random() * ALL_FLOWER_TYPES.length)] as FlowerType);
-    }
-    return Phaser.Utils.Array.Shuffle(result);
-  }
-
-  private _makeCellContainer(cell: CellData): Phaser.GameObjects.Container {
-    const cw = this._cellW, ch = this._cellH;
-    const cx = this._gridLeft + cell.col * cw + cw / 2;
-    const cy = this._gridTop2 + cell.row * ch + ch / 2;
-    const c  = this.add.container(cx, cy);
-
-    const bg = this.add.graphics();
-    const pad = 3;
-    bg.fillStyle(0x1a472a, 1);
-    bg.fillRoundedRect(-cw / 2 + pad, -ch / 2 + pad, cw - pad * 2, ch - pad * 2, 6);
-
-    const flowerImg = this._createFlowerImage(cell.type, 0, 0, Math.min(cw, ch) * 0.32);
-
-    c.add([bg, flowerImg]);
-    c.setSize(cw - 6, ch - 6).setInteractive({ useHandCursor: true });
-    c.on('pointerover', () => {
-      bg.clear();
-      bg.fillStyle(0x2a5e3a, 1);
-      bg.fillRoundedRect(-cw / 2 + pad, -ch / 2 + pad, cw - pad * 2, ch - pad * 2, 6);
-      bg.lineStyle(2, FLOWER_COLORS[cell.type], 0.8);
-      bg.strokeRoundedRect(-cw / 2 + pad, -ch / 2 + pad, cw - pad * 2, ch - pad * 2, 6);
-    });
-    c.on('pointerout', () => {
-      bg.clear();
-      bg.fillStyle(0x1a472a, 1);
-      bg.fillRoundedRect(-cw / 2 + pad, -ch / 2 + pad, cw - pad * 2, ch - pad * 2, 6);
-    });
-    c.on('pointerdown', () => this._onFlowerClick(cell));
-    return c;
-  }
-
-  // ── interaction ───────────────────────────────────────────────────────────
-
-  private _onFlowerClick(cell: CellData): void {
-    if (this._flying || this._gameOver || !cell.container) return;
-
-    const matchPot = this._pots.find(p => p.type === cell.type);
-    if (!matchPot || !matchPot.container) {
-      this._playError(cell.container);
-      return;
+    private _checkSpawnBubble(): void {
+      if (this._gameOver) return;
+      this._bubbles = this._bubbles.filter(b => b.flowers.some(f => f.active));
+      if (this._bubbles.length < MAX_BUBBLES) {
+        this._spawnBubble();
+      }
     }
 
-    this._flying = true;
-    AudioManager.getInstance().playSfx('place');
+    private _spawnBubble(): void {
+      const radius = Math.max(45, this._W * 0.12);
+      const startX = Phaser.Math.Between(radius * 1.5, this._W - radius * 1.5);
+      const startY = this._gridTop - radius;
+      
+      const c = this.add.container(startX, startY);
+      
+      const bg = this.add.graphics();
+      bg.lineStyle(4, 0x81d4fa, 0.6);
+      bg.fillStyle(0xe1f5fe, 0.3);
+      bg.fillCircle(0, 0, radius);
+      bg.strokeCircle(0, 0, radius);
+      c.add(bg);
 
-    // Fly animation: from cell to pot
-    const srcX = cell.container.x, srcY = cell.container.y;
-    const dstX = matchPot.container.x, dstY = matchPot.container.y;
+      const count = Phaser.Math.Between(2, 5);
+      const flowersData: BubbleFlowerData[] = [];
+      const flowerR = radius * (count <= 3 ? 0.4 : 0.35);
+      
+      const bData: BubbleData = {
+        id: Phaser.Utils.String.UUID(),
+        container: c,
+        flowers: flowersData,
+        bg,
+        radius
+      };
 
-    // Create flying flower
-    const flyImg = this._createFlowerImage(cell.type, 0, 0, Math.min(this._cellW, this._cellH) * 0.3);
-    flyImg.setPosition(srcX, srcY);
+      this._gridLayer.add(c);
+      
+      const types = this._weighedFlowerTypes(count);
+      for (let i = 0; i < count; i++) {
+        const type = types[i];
+        const angle = (Math.PI * 2 * i) / count;
+        const offset = count === 1 ? 0 : radius * 0.45;
+        const fx = Math.cos(angle) * offset;
+        const fy = Math.sin(angle) * offset;
+        
+        const fImg = this._createFlowerImage(type, fx, fy, flowerR, 0x0d3320); 
 
-    // Remove from grid immediately
-    cell.container.setAlpha(0.3);
+        fImg.setSize(flowerR * 2, flowerR * 2);
+        fImg.setInteractive(new Phaser.Geom.Circle(0, 0, flowerR), Phaser.Geom.Circle.Contains);
+        if(fImg.input) fImg.input.cursor = "pointer";
+        
+        c.add(fImg);
+        
+        const fData: BubbleFlowerData = {
+          type, container: fImg, bubble: bData, active: true, localX: fx, localY: fy
+        };
+        flowersData.push(fData);
+        
+        fImg.on('pointerdown', () => this._onFlowerClick(fData));
+        
+        fImg.on('pointerover', () => { fImg.setScale(1.1); });
+        fImg.on('pointerout', () => { fImg.setScale(1); });
+      }
 
-    this.tweens.add({
-      targets: flyImg,
-      x: dstX, y: dstY,
-      scaleX: 0.5, scaleY: 0.5,
-      duration: 380,
-      ease: 'Quad.easeIn',
-      onComplete: () => {
-        flyImg.destroy();
-        this._removeCellContainer(cell);
-        this._addToPot(matchPot);
-        this._flying = false;
-      },
-    });
-  }
+      this.matter.add.gameObject(c, { 
+        shape: { type: 'circle', radius },
+        restitution: 0.5,
+        friction: 0.1,
+        frictionAir: 0.02,
+        density: 0.001
+      });
+      const body = c.body as MatterJS.BodyType;
+      this.matter.body.applyForce(body, body.position, { x:(Math.random()-0.5)*0.01, y: 0.05 });
 
-  private _removeCellContainer(cell: CellData): void {
-    cell.container?.destroy();
-    cell.container = null;
-  }
+      this._bubbles.push(bData);
+    }
 
-  private _addToPot(pot: PotData): void {
+    private _weighedFlowerTypes(needed: number): FlowerType[] {
+      const result: FlowerType[] = [];
+      const potTypes = this._pots.map(p => p.type);
+      if (potTypes.length > 0) {
+        potTypes.forEach(t => { for (let i = 0; i < 2; i++) result.push(t); });
+      }
+      while (result.length < needed + 5) {
+        const all: FlowerType[] = ['rose', 'sunflower', 'tulip', 'daisy', 'lily', 'orchid', 'chrysanthemum', 'violet'];
+        result.push(all[Math.floor(Math.random() * all.length)]);
+      }
+      return Phaser.Utils.Array.Shuffle(result).slice(0, needed);
+    }
+
+    private _playError(container: Phaser.GameObjects.Container): void {
+      AudioManager.getInstance().playSfx('error');
+      this.tweens.add({
+        targets: container, x: container.x + 6, duration: 50, yoyo: true, repeat: 3,
+      });
+    }
+
+    // ── interaction ─────────────────────────────────────────────────────────
+
+    private _onFlowerClick(fData: BubbleFlowerData): void {
+      if (this._flying || this._gameOver || !fData.active) return;
+      if (!fData.bubble.container.active) return;
+
+      const matchPot = this._pots.find(p => p.type === fData.type);
+      if (!matchPot || !matchPot.container) {
+        this._playError(fData.container);
+        return;
+      }
+
+      this._flying = true;
+      fData.active = false;
+      AudioManager.getInstance().playSfx('place');
+
+      const matrix = fData.container.getWorldTransformMatrix();
+      const srcX = matrix.tx;
+      const srcY = matrix.ty;
+      
+      const dstX = matchPot.container.x, dstY = matchPot.container.y;
+
+      fData.container.setAlpha(0);
+
+      const flyImg = this._createFlowerImage(fData.type, 0, 0, fData.bubble.radius * 0.4, 0x0d3320);
+      flyImg.setPosition(srcX, srcY);
+      flyImg.setDepth(100);
+
+      this.tweens.add({
+        targets: flyImg,
+        x: dstX, y: dstY,
+        scaleX: 0.5, scaleY: 0.5,
+        duration: 380,
+        ease: 'Quad.easeIn',
+        onComplete: () => {
+          flyImg.destroy();
+          this._addToPot(matchPot);
+          this._flying = false;
+        },
+      });
+
+      const remaining = fData.bubble.flowers.filter(f => f.active);
+      if (remaining.length === 0) {
+        AudioManager.getInstance().playSfx('clear');
+        this.tweens.add({
+          targets: fData.bubble.container,
+          scaleX: 1.2, scaleY: 1.2, alpha: 0,
+          duration: 150,
+          onComplete: () => {
+             this.matter.world.remove(fData.bubble.container.body as MatterJS.BodyType);
+             fData.bubble.container.destroy();
+          }
+        });
+      }
+    }
+private _addToPot(pot: PotData): void {
     pot.count++;
     this._addScore(10);
     pot.dotGraphics && this._drawDots(pot.dotGraphics, pot,
@@ -536,44 +609,8 @@ export class FlowerPotsScene extends Phaser.Scene {
     this._scoreText.setText(`得分: ${this._score}`);
   }
 
-  private _playError(container: Phaser.GameObjects.Container): void {
-    AudioManager.getInstance().playSfx('error');
-    this.tweens.add({
-      targets: container, x: container.x + 6, duration: 50, yoyo: true, repeat: 3,
-    });
-  }
-
-  // ── game-over check ───────────────────────────────────────────────────────
-
   private _checkGameOver(): void {
     if (this._gameOver) return;
-
-    // Check if any flower in grid matches any active pot
-    let hasMatch = false;
-    outer:
-    for (const row of this._cells) {
-      for (const cell of row) {
-        if (!cell.container) continue;
-        for (const pot of this._pots) {
-          if (pot.type === cell.type) { hasMatch = true; break outer; }
-        }
-      }
-    }
-
-    // Also check if grid is fully cleared
-    const anyCell = this._cells.flat().some(c => c.container !== null);
-    if (!anyCell) {
-      this._addScore(200); // bonus for clearing the board
-      // Refill grid
-      this._buildGrid();
-      return;
-    }
-
-    if (!hasMatch && this._pots.length > 0) {
-      // No moves possible
-      this._endGame();
-    }
-
     if (this._pots.length === 0 && this._queue.length === 0) {
       this._endGame();
     }

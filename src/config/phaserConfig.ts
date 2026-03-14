@@ -23,6 +23,14 @@ export const phaserConfig: Phaser.Types.Core.GameConfig = {
     antialias: true,
     powerPreference: 'default',
   },
+  physics: {
+    default: 'matter',
+    matter: {
+      enableSleeping: true,
+      gravity: { x: 0, y: 0.5 },
+      debug: false
+    }
+  },
   fps: { target: 60, forceSetTimeOut: false },
   scene: [
     BootScene,

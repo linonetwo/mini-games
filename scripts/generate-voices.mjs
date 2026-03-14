@@ -33,20 +33,20 @@ if (!API_KEY || API_KEY === 'sk-xxx') {
 
 // ── 语音任务列表 ──────────────────────────────────────────────────────────────
 const VOICES = [
-  // 花名播报 (花盆游戏)
-  { key: 'rose',          file: 'public/assets/audio/voices/rose.mp3',          text: '玫瑰花！', speed: 1.1 },
-  { key: 'sunflower',     file: 'public/assets/audio/voices/sunflower.mp3',     text: '向日葵！', speed: 1.1 },
-  { key: 'tulip',         file: 'public/assets/audio/voices/tulip.mp3',         text: '郁金香！', speed: 1.1 },
-  { key: 'daisy',         file: 'public/assets/audio/voices/daisy.mp3',         text: '雏菊！', speed: 1.1 },
-  { key: 'lily',          file: 'public/assets/audio/voices/lily.mp3',          text: '百合花！', speed: 1.1 },
-  { key: 'orchid',        file: 'public/assets/audio/voices/orchid.mp3',        text: '兰花！', speed: 1.1 },
-  { key: 'chrysanthemum', file: 'public/assets/audio/voices/chrysanthemum.mp3', text: '菊花！', speed: 1.1 },
-  { key: 'violet',        file: 'public/assets/audio/voices/violet.mp3',        text: '紫罗兰！', speed: 1.1 },
+  // 花名播报 (花盆游戏)附加句号避免截断
+  { key: 'rose',          file: 'public/assets/audio/voices/rose.mp3',          text: '玫瑰花。', speed: 1.0 },
+  { key: 'sunflower',     file: 'public/assets/audio/voices/sunflower.mp3',     text: '向日葵。', speed: 1.0 },
+  { key: 'tulip',         file: 'public/assets/audio/voices/tulip.mp3',         text: '郁金香。', speed: 1.0 },
+  { key: 'daisy',         file: 'public/assets/audio/voices/daisy.mp3',         text: '雏菊。', speed: 1.0 },
+  { key: 'lily',          file: 'public/assets/audio/voices/lily.mp3',          text: '百合花。', speed: 1.0 },
+  { key: 'orchid',        file: 'public/assets/audio/voices/orchid.mp3',        text: '兰花。', speed: 1.0 },
+  { key: 'chrysanthemum', file: 'public/assets/audio/voices/chrysanthemum.mp3', text: '菊花。', speed: 1.0 },
+  { key: 'violet',        file: 'public/assets/audio/voices/violet.mp3',        text: '紫罗兰。', speed: 1.0 },
   // 游戏提示
-  { key: 'combo',         file: 'public/assets/audio/voices/combo.mp3',         text: '连击！太棒了！', speed: 1.2 },
+  { key: 'combo',         file: 'public/assets/audio/voices/combo.mp3',         text: '连击！太棒了！', speed: 1.1 },
   { key: 'levelup',       file: 'public/assets/audio/voices/levelup.mp3',       text: '升级了！继续加油！', speed: 1.0 },
   { key: 'gamestart',     file: 'public/assets/audio/voices/gamestart.mp3',     text: '游戏开始！', speed: 1.0 },
-  { key: 'excellent',     file: 'public/assets/audio/voices/excellent.mp3',     text: '太出色了！', speed: 1.1 },
+  { key: 'excellent',     file: 'public/assets/audio/voices/excellent.mp3',     text: '太出色了！。', speed: 1.0 },
 ];
 
 // ── API 调用 ──────────────────────────────────────────────────────────────────

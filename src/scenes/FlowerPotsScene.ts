@@ -171,6 +171,12 @@ export class FlowerPotsScene extends Phaser.Scene {
     // Pot layer
     this._potLayer  = this.add.container(0, 0);
     this._gridLayer = this.add.container(0, 0);
+      
+      const rect = this.make.graphics({x: 0, y: 0}, false);
+      rect.fillStyle(0xffffff);
+      rect.fillRect(0, this._gridTop, W, H - this._gridTop + 100);
+      this._gridLayer.setMask(new Phaser.Display.Masks.GeometryMask(this, rect));
+
 
     this._comboText = this.add.text(W / 2, this._hudH + this._potAreaH + 28, '', {
       fontSize: '22px', color: '#ff8f00', fontFamily: 'Arial', fontStyle: 'bold',
@@ -300,7 +306,7 @@ export class FlowerPotsScene extends Phaser.Scene {
     g.fillRect(-bodyW * 0.45, bodyH / 2 + rimH - bodyH, bodyW * 0.9, baseH);
 
     // Flower type indicator on pot
-    const flowerImg = this._createFlowerImage(pot.type, 0, -bodyH * 0.05, potW * 0.16, 0x8d6e63);
+    const flowerImg = this._createFlowerImage(pot.type, 0, -bodyH * 0.05, potW * 0.16);
     c.add([g, flowerImg]);
 
     // Flower name label
@@ -371,14 +377,27 @@ export class FlowerPotsScene extends Phaser.Scene {
     }
 
     private _checkSpawnBubble(): void {
-      if (this._gameOver) return;
-      this._bubbles = this._bubbles.filter(b => b.flowers.some(f => f.active));
-      if (this._bubbles.length < MAX_BUBBLES) {
-        this._spawnBubble();
-      }
-    }
+        if (this._gameOver) return;
 
-    private _spawnBubble(): void {
+        // Destroy bubbles out of bounds (above or far below)
+        for (const b of [...this._bubbles]) {
+          if (b.container.y < this._gridTop - b.radius * 3 || b.container.y > this._H + b.radius * 2) {
+             const body = b.container.body as MatterJS.BodyType | undefined;
+             if (body) this.matter.world.remove(body);
+             b.container.destroy();
+             b.flowers.forEach(f => f.active = false);
+          }
+        }
+
+        // remove inactive bubbles from list
+        this._bubbles = this._bubbles.filter(b => b.flowers.some(f => f.active) && b.container.active);
+        
+        if (this._bubbles.length < MAX_BUBBLES) {
+          this._spawnBubble();
+        }
+      }
+
+      private _spawnBubble(): void {
       const radius = Math.max(45, this._W * 0.12);
       const startX = Phaser.Math.Between(radius * 1.5, this._W - radius * 1.5);
       const startY = this._gridTop - radius;
@@ -414,7 +433,7 @@ export class FlowerPotsScene extends Phaser.Scene {
         const fx = Math.cos(angle) * offset;
         const fy = Math.sin(angle) * offset;
         
-        const fImg = this._createFlowerImage(type, fx, fy, flowerR, 0x0d3320); 
+        const fImg = this._createFlowerImage(type, fx, fy, flowerR); 
 
         fImg.setSize(flowerR * 2, flowerR * 2);
         fImg.setInteractive(new Phaser.Geom.Circle(0, 0, flowerR), Phaser.Geom.Circle.Contains);
@@ -490,7 +509,7 @@ export class FlowerPotsScene extends Phaser.Scene {
 
       fData.container.setAlpha(0);
 
-      const flyImg = this._createFlowerImage(fData.type, 0, 0, fData.bubble.radius * 0.4, 0x0d3320);
+      const flyImg = this._createFlowerImage(fData.type, 0, 0, fData.bubble.radius * 0.4);
       flyImg.setPosition(srcX, srcY);
       flyImg.setDepth(100);
 
@@ -650,7 +669,7 @@ private _addToPot(pot: PotData): void {
 
   // ── programmatic flower drawing ───────────────────────────────────────────
 
-  private _createFlowerImage(type: FlowerType, x: number, y: number, r: number, bgColor: number = 0x1a472a): Phaser.GameObjects.Container {
+private _createFlowerImage(type: FlowerType, x: number, y: number, r: number): Phaser.GameObjects.Container {
     const c = this.add.container(x, y);
 
     // Drop shadow
@@ -659,26 +678,20 @@ private _addToPot(pot: PotData): void {
     g.fillCircle(2, 4, r * 0.9);
     c.add(g);
 
-    // The generated image
-    // The key must be in the form of 'flower-TYPE' based on preload
     const key = `flower-${type}`;
     if (this.textures.exists(key)) {
       const img = this.add.image(0, 0, key);
-      const scale = ((r * 2.2) / img.width); 
+      const scale = (r * 1.6) / img.width; // slightly smaller so it stays inside visually
       img.setScale(scale);
-      c.add(img);
-
-      // Create an inverted mask overlay by drawing a thick frame in the background color instead of complicated WebGL masks
-      const overlay = this.add.graphics();
-      // Outer ring covering the square corners
-      overlay.lineStyle(r * 0.8, bgColor, 1);
-      overlay.strokeCircle(0, 0, r + r * 0.4);
-
-      // Add a nice white rim on top
-      overlay.lineStyle(3, 0xffffff, 1);
-      overlay.strokeCircle(0, 0, r);
       
-      c.add(overlay);
+      // Simple circle mask using Graphics Geometry mask
+      const maskG = this.make.graphics({x: 0, y: 0}, false);
+      maskG.fillStyle(0xffffff, 1);
+      maskG.fillCircle(0, 0, r * 0.9); // slightly round it without huge white borders
+      const mask = new Phaser.Display.Masks.GeometryMask(this, maskG);
+      img.setMask(mask);
+      
+      c.add(img);
     } else {
       // Fallback
       g.fillStyle(FLOWER_COLORS[type], 1);

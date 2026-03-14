@@ -1,0 +1,24 @@
+{
+  "name": "mini-games",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "serve": "vite preview --port 8080 --host",
+    "generate:images": "node scripts/generate-images.mjs",
+    "generate:voices": "node scripts/generate-voices.mjs",
+    "generate:assets": "node scripts/generate-images.mjs && node scripts/generate-voices.mjs && node scripts/optimize-assets.mjs"
+  },
+  "dependencies": {
+    "phaser": "^3.87.0",
+    "@inrupt/solid-client": "^2.1.0",
+    "@inrupt/solid-client-authn-browser": "^2.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5",
+    "vite": "^5.2.12"
+  }
+}

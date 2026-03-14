@@ -1,0 +1,22 @@
+{
+  "version": "2026-03-13T18:38:51.792Z",
+  "images": {
+    "bg-blocks": "assets/images/ui/bg-blocks.jpg",
+    "bg-flowerpots": "assets/images/ui/bg-flowerpots.jpg",
+    "bg-mahjong": "assets/images/ui/bg-mahjong.jpg",
+    "bg-menu": "assets/images/ui/bg-menu.jpg"
+  },
+  "audio": {
+    "chrysanthemum": "assets/audio/voices/chrysanthemum.mp3",
+    "combo": "assets/audio/voices/combo.mp3",
+    "daisy": "assets/audio/voices/daisy.mp3",
+    "gamestart": "assets/audio/voices/gamestart.mp3",
+    "levelup": "assets/audio/voices/levelup.mp3",
+    "lily": "assets/audio/voices/lily.mp3",
+    "orchid": "assets/audio/voices/orchid.mp3",
+    "rose": "assets/audio/voices/rose.mp3",
+    "sunflower": "assets/audio/voices/sunflower.mp3",
+    "tulip": "assets/audio/voices/tulip.mp3",
+    "violet": "assets/audio/voices/violet.mp3"
+  }
+}

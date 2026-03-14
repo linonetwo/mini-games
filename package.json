@@ -10,15 +10,19 @@
     "serve": "vite preview --port 8080 --host",
     "generate:images": "node scripts/generate-images.mjs",
     "generate:voices": "node scripts/generate-voices.mjs",
-    "generate:assets": "node scripts/generate-images.mjs && node scripts/generate-voices.mjs && node scripts/optimize-assets.mjs"
+    "generate:assets": "node scripts/generate-images.mjs && node scripts/generate-voices.mjs && node scripts/optimize-assets.mjs",
+    "test": "vitest run"
   },
   "dependencies": {
-    "phaser": "^3.87.0",
     "@inrupt/solid-client": "^2.1.0",
-    "@inrupt/solid-client-authn-browser": "^2.1.0"
+    "@inrupt/solid-client-authn-browser": "^2.1.0",
+    "phaser": "^3.87.0"
   },
   "devDependencies": {
+    "@vitest/ui": "^4.1.0",
+    "jsdom": "^28.1.0",
     "typescript": "^5.4.5",
-    "vite": "^5.2.12"
+    "vite": "^5.2.12",
+    "vitest": "^4.1.0"
   }
 }

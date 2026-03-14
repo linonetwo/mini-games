@@ -22,6 +22,7 @@ import { AudioManager }  from '../systems/AudioManager.js';
 import { ScoreService }  from '../systems/ScoreService.js';
 import { SaveService }   from '../systems/SaveService.js';
 import { GameOverOverlay } from '../ui/GameOverOverlay.js';
+import { TextureGenerator } from './flowerpots/TextureGenerator.js';
 
 const MAX_BUBBLES = 12;
 const POT_SLOTS  = 4;
@@ -30,7 +31,7 @@ const QUEUE_SIZE = 20;  // pre-generated pot queue
 
 interface BubbleFlowerData {
   type: FlowerType;
-  container: Phaser.GameObjects.Container;
+  container: Phaser.GameObjects.Sprite | Phaser.GameObjects.Container | any;
   bubble: BubbleData;
   active: boolean;
   localX: number;
@@ -39,7 +40,7 @@ interface BubbleFlowerData {
 
 interface BubbleData {
   id: string;
-  container: Phaser.GameObjects.Container;
+  container: Phaser.GameObjects.Sprite | Phaser.GameObjects.Container | any;
   flowers: BubbleFlowerData[];
   bg: Phaser.GameObjects.Graphics;
   radius: number;
@@ -433,11 +434,9 @@ export class FlowerPotsScene extends Phaser.Scene {
         const fx = Math.cos(angle) * offset;
         const fy = Math.sin(angle) * offset;
         
-        const fImg = this._createFlowerImage(type, fx, fy, flowerR); 
-
-        fImg.setSize(flowerR * 2, flowerR * 2);
-        fImg.setInteractive(new Phaser.Geom.Circle(0, 0, flowerR), Phaser.Geom.Circle.Contains);
-        if(fImg.input) fImg.input.cursor = "pointer";
+        const fImg = this._createFlowerImage(type, fx, fy, flowerR);
+          fImg.setInteractive();
+          if(fImg.input) fImg.input.cursor = "pointer";
         
         c.add(fImg);
         
@@ -669,37 +668,11 @@ private _addToPot(pot: PotData): void {
 
   // ── programmatic flower drawing ───────────────────────────────────────────
 
-private _createFlowerImage(type: FlowerType, x: number, y: number, r: number): Phaser.GameObjects.Container {
-    const c = this.add.container(x, y);
-
-    // Drop shadow
-    const g = this.add.graphics();
-    g.fillStyle(0x000000, 0.3);
-    g.fillCircle(2, 4, r * 0.9);
-    c.add(g);
-
-    const key = `flower-${type}`;
-    if (this.textures.exists(key)) {
-      const img = this.add.image(0, 0, key);
-      const scale = (r * 1.6) / img.width; // slightly smaller so it stays inside visually
-      img.setScale(scale);
-      
-      // Simple circle mask using Graphics Geometry mask
-      const maskG = this.make.graphics({x: 0, y: 0}, false);
-      maskG.fillStyle(0xffffff, 1);
-      maskG.fillCircle(0, 0, r * 0.9); // slightly round it without huge white borders
-      const mask = new Phaser.Display.Masks.GeometryMask(this, maskG);
-      img.setMask(mask);
-      
-      c.add(img);
-    } else {
-      // Fallback
-      g.fillStyle(FLOWER_COLORS[type], 1);
-      g.fillCircle(0, 0, r);
+private _createFlowerImage(type: FlowerType, x: number, y: number, r: number) {
+      const img = this.add.sprite(x, y, `flower-circle-${type}`);
+      img.setDisplaySize(r * 2, r * 2);
+      return img;
     }
-
-    return c;
-  }
 
   // ── lifecycle ─────────────────────────────────────────────────────────────
 

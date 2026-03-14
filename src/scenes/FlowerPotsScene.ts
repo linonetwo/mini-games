@@ -85,7 +85,6 @@ export class FlowerPotsScene extends Phaser.Scene {
 
   create(): void {
     AudioManager.getInstance().unlock();
-    this._cropTextures();
     this._lockedSlots.clear();
     this._lockedSlots.add(2);
     this._lockedSlots.add(3);
@@ -94,34 +93,6 @@ export class FlowerPotsScene extends Phaser.Scene {
     this._buildScene();
     this.events.on('hud:back', this._onBack, this);
     this.scale.on('resize', this._onResize, this);
-  }
-
-  private _cropTextures(): void {
-    ALL_FLOWER_TYPES.forEach(type => {
-      const key = `flower-${type}`;
-      if (!this.textures.exists(key)) return;
-      
-      const tKey = `circle-${key}`;
-      if (this.textures.exists(tKey)) return;
-
-      const src = this.textures.get(key).getSourceImage() as HTMLImageElement | HTMLCanvasElement;
-      if (!src) return;
-
-      const d = Math.min(src.width, src.height);
-      const canvas = document.createElement('canvas');
-      canvas.width = d; canvas.height = d;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-
-      // Draw subtle shadow and border inside the circle to make it look like a physical badge
-      const offset = 8;
-      ctx.beginPath();
-      ctx.arc(d/2, d/2, d/2 - offset, 0, Math.PI * 2);
-      ctx.clip();
-      ctx.drawImage(src, (src.width-d)/2, (src.height-d)/2, d, d, 0, 0, d, d);
-      
-      this.textures.addCanvas(tKey, canvas);
-    });
   }
 
   // ── layout helpers ────────────────────────────────────────────────────────
@@ -323,7 +294,7 @@ export class FlowerPotsScene extends Phaser.Scene {
     g.fillRect(-bodyW * 0.45, bodyH / 2 + rimH - bodyH, bodyW * 0.9, baseH);
 
     // Flower type indicator on pot
-    const flowerImg = this._createFlowerImage(pot.type, 0, -bodyH * 0.05, potW * 0.16);
+    const flowerImg = this._createFlowerImage(pot.type, 0, -bodyH * 0.05, potW * 0.16, 0x8d6e63);
     c.add([g, flowerImg]);
 
     // Flower name label
@@ -642,7 +613,7 @@ export class FlowerPotsScene extends Phaser.Scene {
 
   // ── programmatic flower drawing ───────────────────────────────────────────
 
-  private _createFlowerImage(type: FlowerType, x: number, y: number, r: number): Phaser.GameObjects.Container {
+  private _createFlowerImage(type: FlowerType, x: number, y: number, r: number, bgColor: number = 0x1a472a): Phaser.GameObjects.Container {
     const c = this.add.container(x, y);
 
     // Drop shadow
@@ -652,12 +623,25 @@ export class FlowerPotsScene extends Phaser.Scene {
     c.add(g);
 
     // The generated image
-    const key = `circle-flower-${type}`;
+    // The key must be in the form of 'flower-TYPE' based on preload
+    const key = `flower-${type}`;
     if (this.textures.exists(key)) {
       const img = this.add.image(0, 0, key);
-      const scale = (r * 2) / img.width;
+      const scale = ((r * 2.2) / img.width); 
       img.setScale(scale);
       c.add(img);
+
+      // Create an inverted mask overlay by drawing a thick frame in the background color instead of complicated WebGL masks
+      const overlay = this.add.graphics();
+      // Outer ring covering the square corners
+      overlay.lineStyle(r * 0.8, bgColor, 1);
+      overlay.strokeCircle(0, 0, r + r * 0.4);
+
+      // Add a nice white rim on top
+      overlay.lineStyle(3, 0xffffff, 1);
+      overlay.strokeCircle(0, 0, r);
+      
+      c.add(overlay);
     } else {
       // Fallback
       g.fillStyle(FLOWER_COLORS[type], 1);

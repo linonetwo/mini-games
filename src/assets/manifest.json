@@ -1,10 +1,18 @@
 {
-  "version": "2026-03-13T18:38:51.792Z",
+  "version": "2026-03-14T00:00:00.000Z",
   "images": {
     "bg-blocks": "assets/images/ui/bg-blocks.jpg",
     "bg-flowerpots": "assets/images/ui/bg-flowerpots.jpg",
     "bg-mahjong": "assets/images/ui/bg-mahjong.jpg",
-    "bg-menu": "assets/images/ui/bg-menu.jpg"
+    "bg-menu": "assets/images/ui/bg-menu.jpg",
+    "flower-chrysanthemum": "assets/images/flowers/chrysanthemum.jpg",
+    "flower-daisy": "assets/images/flowers/daisy.jpg",
+    "flower-lily": "assets/images/flowers/lily.jpg",
+    "flower-orchid": "assets/images/flowers/orchid.jpg",
+    "flower-rose": "assets/images/flowers/rose.jpg",
+    "flower-sunflower": "assets/images/flowers/sunflower.jpg",
+    "flower-tulip": "assets/images/flowers/tulip.jpg",
+    "flower-violet": "assets/images/flowers/violet.jpg"
   },
   "audio": {
     "chrysanthemum": "assets/audio/voices/chrysanthemum.mp3",
